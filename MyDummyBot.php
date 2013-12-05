@@ -3,16 +3,6 @@
 require_once 'Game.php';
 define('PHP_INT_MIN', ~PHP_INT_MAX); 
 
-/**
- * Bot
- * @author schmittse
- * 
- * TODO :
- *   - Analyser actions des autres
- *   - Rester 1 planete eco en avance
- *   - Définir zone de calme où les planètes peuvent être dégarnies
- *   
- */
 class MyBot
 {
 	/**
@@ -39,46 +29,6 @@ class MyBot
     {
     	$this->game = $g;
     	error_log("start ".$this->game->turns);
-    	$this->initOrUpdateData();
-    	
-    	$planetsOrders = array();
-    	$myMilitaryPlanet = $this->game->myMilitaryPlanets();
-    	
-    	$ennemyFleets = $this->game->enemyFleets();
-    	if (count($ennemyFleets) > 0) {
-    		// Other bot moves ... react
-    	}
-    	
-    	// If not every planet issue an order, lets go
-    	if (count($planetsOrders) < count($myMilitaryPlanet)) {
-    		for ($i=0; $i<count($myMilitaryPlanet); $i++) {
-    			if (array_key_exists($i, $planetsOrders)) {
-    				// If planet as no order yet
-    				$s = $myMilitaryPlanet[$i];
-	    			/* @var $s Planet */
-
-    				// Find weakest/closest neutral eco planet and take it
-    				$d = $this->getWeakestClosestPlanet($s, 3);
-    				if ($d == null) $d = $this->getWeakestPlanet();
-    				
-    				// Get ships number
-    				if ($s->numShips > ($d->numShips + 20)) { // FIXME 20 Magic number (= incoming fleets ?)
-						$n = ($d->numShips + 2);
-	    				
-	    				// Issue order
-	    				$planetsOrders[$i] = new MyOrder($s->id, $d->id, $n);
-    				}
-    			}
-    		}
-    	}
-    	
-    	// Issue Orders
-    	for ($i=0; $i<count($planetsOrders); $i++) {
-    		$o = $planetsOrders[$i];
-	    	/* @var $o MyOrder */
-    		
-    		$this->game->issueOrder($o->source_id, $o->dest_id, $o->numShips);
-    	}
     	
 		// (1) If we currently have a fleet in flight, just do nothing.
 		if (count($this->game->myMilitaryFleets()) >= 1) {
@@ -231,114 +181,6 @@ class MyBot
 		}
 		
 		return $dest;
-    }
-    
-    /**
-     * Return number of ship to send to take the target planet
-     * 
-     * @param Planet $targetPlanet
-     * @return number
-     */
-    private function getNbrShipToTakePlanet($targetPlanet) {
-    	$cnt = 0;
-    	if ($targetPlanet->owner != 1) {
-    		// Not my planet, need 1 more ship to take it
-    		$cnt = 1;
-    	}
-    	
-    	// Sum all incomming fleet
-    	foreach ($this->game->enemyFleets() as $f) {
-    		if ($f->destinationPlanet == $targetPlanet->id) {
-    			$cnt += $f->numShips;
-    		}
-    	}
-
-    	// Substract my fleet
-    	foreach ($this->game->myFleets() as $f) {
-    		if ($f->destinationPlanet == $targetPlanet->id) {
-    			$cnt -= $f->numShips;
-    		}
-    	}
-    	
-    	return $cnt;
-    }
-    
-    /**
-     * Return the population of the planet in the defined number of turn
-     * 
-     * @param Planet $planet
-     * @param number $nbrTurn
-     * @return number
-     */
-    private function getPlanetFuturePopulation($planet, $nbrTurn) {
-    	$cnt = $planet->numShips;
-
-    	// Sum all incomming fleet if arrived
-    	foreach ($this->game->enemyFleets() as $f) {
-    		if ($f->destinationPlanet == $targetPlanet->id && $f->turnsRemaining <= $nbrTurn) {
-    			$cnt += $f->numShips;
-    		}
-    	}
-
-    	// Substract my fleet if arrived
-    	foreach ($this->game->myFleets() as $f) {
-    		if ($f->destinationPlanet == $targetPlanet->id && $f->turnsRemaining <= $nbrTurn) {
-    			$cnt -= $f->numShips;
-    		}
-    	}
-    	
-    	return $cnt;
-    }
-
-    /**
-     * Choose which order to make
-     * 
-	 *   - Algo de choix de planète :
-	 *      - eco si moins de 1 planete eco en avance
-	 *         - plus prêt mais pas trop peuplée
-	 *         - prendre en compte zone de confiance
-	 *      - militaire
-	 *         - neutre proche
-	 *         - ennemy si peu peuplée (prendre en compte ravitaillements ...)
-	 *      - snipe ? (prise en compte de tous les attaquants)
-     * 
-     * @return string
-     */
-    private function chooseMainOrderType() {
-    	$planets = array_merge($this->game->enemyPlanets(), $this->game->myPlanets());
-    	
-    	// TODO Check for snipping available
-
-    	$eco_count = array_fill(0, $this->playerCount, 0);
-    	$mil_count = array_fill(0, $this->playerCount, 0);
-    	// Get max eco planets per player
-    	foreach ($planets as $p) {
-    		/* @var $p Planet */
-    		if ($p->type == PLANET_ECONOMIC) {
-    			$eco_count[$p->owner] += 1;
-    		} else if ($p->type == PLANET_MILITARY) {
-    			$mil_count[$p->owner] += 1;
-    		}
-    	}
-
-    	$eco_max = 0;
-    	$mil_max = 0;
-    	for ($i=2; $i<$this->playerCount; $i++) {
-    		if ($eco_count[$i] > $eco_max) {
-    			$eco_max = $eco_count[$i];
-    		}
-    		if ($mil_count[$i] > $mil_max) {
-    			$mil_max = $mil_count[$i];
-    		}
-    	}
-    	
-    	if ($eco_count[1] < ($mil_max + 1)) {
-    		return "ECO";
-    	}
-
-
-    	// TODO Check for military order
-    	return "MIL";
     }
 }
 
