@@ -56,55 +56,45 @@ class Game
      */
 
 	/**
-	 * Get ALL your planets (Economic & Military)
 	 * @return Planet[]
 	 */
     public function myPlanets() {
         return $this->myPlanets;
     }
 	/**
-	 * Get your Military planets
 	 * @return Planet[]
 	 */
     public function myMilitaryPlanets() {
         return $this->getEntryFromType($this->myPlanets, MILITARY_TYPE);
     }
 	/**
-	 * Get your Economic planets
 	 * @return Planet[]
 	 */
     public function myEconomicPlanets() {
         return $this->getEntryFromType($this->myPlanets, ECONOMIC_TYPE);
     }
 	/**
-	 * Get ALL enemy planets (Economic & Military)<br/>
-	 * 	<b>Neutral planets not included</b>
 	 * @return Planet[]
 	 */
     public function enemyPlanets() {
         return $this->enemyPlanets;
     }
 	/**
-	 * Get enemy Military planets
 	 * @return Planet[]
 	 */
     public function enemyMilitaryPlanets() {
         return $this->getEntryFromType($this->enemyPlanets, MILITARY_TYPE);
     }
 	/**
-	 * Get enemy Economic planets
 	 * @return Planet[]
 	 */
     public function enemyEconomicPlanets() {
         return $this->getEntryFromType($this->enemyPlanets, ECONOMIC_TYPE);
     }
 	/**
-	 * Get ALL enemy planets (Economic & Military) for the given player_id<br/>
-	 * 	<b>Neutral planets not included</b>
-	 * @param string ID of the player
 	 * @return Planet[]
 	 */
-    public function enemyPlanetsByPlayerId($player_id) {
+    public function enemyPlanetsByPlayerId	($player_id) {
 		$result = array();
 		foreach ($this->enemyPlanets as $p) {
 			if ($p->owner == $playerID) {
@@ -114,14 +104,13 @@ class Game
         return $result;
     }
 	/**
-	 * Get ALL neutral planets (Economic & Military)
 	 * @return Planet[]
 	 */
     public function neutralPlanets() {
         return $this->neutralPlanets;
     }
 	/**
-	 * Get ALL planets (Economic & Military) for neutral and enemies
+	 * NOT my planets = neutral + ennemy
 	 * @return Planet[]
 	 */
     public function notMyPlanets() {
@@ -191,11 +180,27 @@ class Game
     public function distance($row1, $col1, $row2, $col2) {
         $dRow = abs($row1 - $row2);
         $dCol = abs($col1 - $col2);
-
-        $dRow = min($dRow, $this->rows - $dRow);
-        $dCol = min($dCol, $this->cols - $dCol);
-
+        
         return ceil(sqrt($dRow * $dRow + $dCol * $dCol));
+    }
+    
+    /**
+     * 
+     * @param Planet $ecoPlanet
+     * @return Planet
+     */
+    public function findNearestMilitaryPlanet($ecoPlanet) {
+    	$min_dist = PHP_INT_MAX;
+    	$target = null;
+		$planets = $this->myMilitaryPlanets();
+		foreach ($planets as $p) {
+			$dist = $this->distanceWithPlanets($ecoPlanet, $p);
+			if ($dist < $min_dist) {
+				$min_dist = $dist;
+				$target = $p;
+			}
+		}
+		return $target;
     }
 
 	/**
@@ -294,8 +299,6 @@ class Game
                 }
             }
         }
-        
-        $this->turns++;
     }
 	
     public static function run($bot) {
@@ -306,6 +309,7 @@ class Game
             $current_line = trim($current_line);
             if ($current_line === 'ready') {
                 $game->setup($data);
+                $bot->doReadyTurn($game);
                 $game->finishTurn();
                 $data = array();
             } elseif ($current_line === 'go') {
